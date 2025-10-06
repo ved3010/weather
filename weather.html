@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weather App</title>
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+  <style>
+    body {
+      background: linear-gradient(to right, #74ebd5, #ACB6E5);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .weather-section {
+      text-align: center;
+      margin-top: 50px;
+    }
+    .card {
+      border-radius: 15px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      transition: transform 0.3s ease;
+    }
+    .card:hover {
+      transform: translateY(-5px);
+    }
+    .card h3 {
+      font-size: 1.2rem;
+      text-transform: capitalize;
+    }
+    .table {
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg bg-light shadow-sm">
+    <div class="container-fluid">
+      <a class="navbar-brand fw-bold" href="#">Weather</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item"><a class="nav-link active" href="#">Home</a></li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Check Weather</a>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="#">By City</a></li>
+              <li><a class="dropdown-item" href="#">Nearby</a></li>
+            </ul>
+          </li>
+          <li class="nav-item"><a class="nav-link" href="#">Usage Guide</a></li>
+        </ul>
+        <form class="d-flex" onsubmit="event.preventDefault(); searchWeather();">
+          <input id="cityInput" class="form-control me-2" type="search" placeholder="Search City" />
+          <button class="btn btn-success" type="submit">Search</button>
+        </form>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Weather Section -->
+  <div class="weather-section container">
+    <h2 class="mt-4" id="cityName">Weather in Your City</h2>
+
+    <div class="row justify-content-center mt-4">
+      <div class="col-md-3 col-10 mb-3">
+        <div class="card p-4 text-center">
+          <h3>Temperature</h3>
+          <h1 id="temperature">--°C</h1>
+        </div>
+      </div>
+      <div class="col-md-3 col-10 mb-3">
+        <div class="card p-4 text-center">
+          <h3>Humidity</h3>
+          <h1 id="humidity">--%</h1>
+        </div>
+      </div>
+      <div class="col-md-3 col-10 mb-3">
+        <div class="card p-4 text-center">
+          <h3>Wind Speed</h3>
+          <h1 id="wind">-- km/h</h1>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="mt-5">Weather of Some Places</h3>
+    <div class="table-responsive mt-3">
+      <table class="table table-striped text-center align-middle">
+        <thead class="table-dark">
+          <tr>
+            <th>City</th>
+            <th>Temperature (°C)</th>
+            <th>Humidity (%)</th>
+            <th>Wind Speed (km/h)</th>
+          </tr>
+        </thead>
+        <tbody id="cityTable">
+          
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+  // Get coordinates of city from Open-Meteo
+  async function getCoordinates(city) {
+      const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}`;
+      const res = await fetch(geoUrl);
+      const data = await res.json();
+      if (data.results && data.results.length > 0)
+          return { lat: data.results[0].latitude, lon: data.results[0].longitude };
+      throw new Error("City not found");
+  }
+
+  // Get weather data (Open-Meteo)
+  async function getWeather(lat, lon) {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m`;
+      const res = await fetch(url);
+      const data = await res.json();
+      return data.current;
+  }
+
+  async function searchWeather() {
+      const city = document.getElementById("cityInput").value.trim();
+      if (!city) return;
+
+      document.getElementById("cityName").innerText = `Weather in ${city}`;
+      document.getElementById("temperature").innerText = "--°C";
+      document.getElementById("humidity").innerText = "--%";
+      document.getElementById("wind").innerText = "-- km/h";
+
+      try {
+          const coords = await getCoordinates(city);
+          const weather = await getWeather(coords.lat, coords.lon);
+
+          document.getElementById("temperature").innerText = `${weather.temperature_2m}°C`;
+          document.getElementById("humidity").innerText = `${weather.relative_humidity_2m}%`;
+          document.getElementById("wind").innerText = `${weather.wind_speed_10m} km/h`;
+      } catch {
+          alert("City not found!");
+      }
+  }
+
+  // Load preset cities into table
+  const presetCities = ["Kanpur", "Delhi", "Jalgaon"];
+  async function loadPresetCities() {
+      const table = document.getElementById("cityTable");
+      for (let city of presetCities) {
+          try {
+              const coords = await getCoordinates(city);
+              const weather = await getWeather(coords.lat, coords.lon);
+              const row = `
+                  <tr>
+                      <td>${city}</td>
+                      <td>${weather.temperature_2m}°C</td>
+                      <td>${weather.relative_humidity_2m}%</td>
+                      <td>${weather.wind_speed_10m} km/h</td>
+                  </tr>`;
+              table.insertAdjacentHTML('beforeend', row);
+          } catch {
+              console.log("Error fetching weather for", city);
+          }
+      }
+  }
+
+  loadPresetCities();
+  </script>
+</body>
+</html>
